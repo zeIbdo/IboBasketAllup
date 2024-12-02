@@ -1,5 +1,6 @@
 ﻿using Allup.Application.ViewModels;
 using Allup.Domain.Entities;
+using System.Linq.Expressions;
 
 namespace Allup.Application.Services.Abstracts;
 
@@ -7,6 +8,6 @@ public interface IBasketItemService : ICrudService<BasketItemViewModel, BasketIt
 {
 
 	Task<BasketItemViewModel> UpdateAsync(BasketItemUpdateViewModel item);
-	Task<BasketItemViewModel> DeleteAsync(int id);
+	Task<BasketItemViewModel> DeleteAsync(Expression<Func<BasketItem, bool>> predicate);
 
 }

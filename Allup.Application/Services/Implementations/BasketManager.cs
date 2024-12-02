@@ -85,7 +85,8 @@ public class BasketManager : IBasketService
             clientId = _cookieService.GetBrowserId();
         else
             clientId = _contextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
-        await _basketItemService.DeleteAsync(id);
+        
+        await _basketItemService.DeleteAsync(x=>x.Id==id && x.ClientId==clientId);
         var count = (await _basketItemService.GetAllAsync(x => x.ClientId == clientId)).Count;
         return count;
     }

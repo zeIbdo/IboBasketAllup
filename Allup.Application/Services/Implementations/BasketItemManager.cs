@@ -37,9 +37,9 @@ namespace Allup.Application.Services.Implementations
 			return await base.CreateAsync(createViewModel);
 		}
 
-		public async Task<BasketItemViewModel> DeleteAsync(int id)
+		public async Task<BasketItemViewModel> DeleteAsync(Expression<Func<BasketItem, bool>> predicate)
 		{
-			var entity = await _repository.GetAsync(id);
+			var entity = await _repository.GetAsync(predicate);
 			
 			var deletedEntity = await _repository.DeleteAsync(entity);
 			return Mapper.Map<BasketItemViewModel>(deletedEntity);
