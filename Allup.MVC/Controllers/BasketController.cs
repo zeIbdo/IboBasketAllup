@@ -1,10 +1,12 @@
 ﻿using Allup.Application.Services.Abstracts;
 using Allup.Application.UI.Services.Abstracts;
+using Allup.Application.UI.Services.Implementations;
 using Allup.Application.UI.ViewModels;
 using Allup.Domain.Entities;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Globalization;
 using System.Security.Claims;
 
 namespace Allup.MVC.Controllers
@@ -15,16 +17,18 @@ namespace Allup.MVC.Controllers
         private readonly IBasketService _basketService;
         private readonly IBasketItemService _basketItemService;
         private readonly ICookieService _cookieService;
+        private readonly ExternalApiService _externalApiService;
 
-		public BasketController(IProductService productService, ILanguageService languageService, IBasketService basketService, IBasketItemService basketItemService, ICookieService cookieService) : base(languageService)
-		{
-			_productService = productService;
-			_basketService = basketService;
-			_basketItemService = basketItemService;
-			_cookieService = cookieService;
-		}
+        public BasketController(IProductService productService, ILanguageService languageService, IBasketService basketService, IBasketItemService basketItemService, ICookieService cookieService, ExternalApiService externalApiService) : base(languageService)
+        {
+            _productService = productService;
+            _basketService = basketService;
+            _basketItemService = basketItemService;
+            _cookieService = cookieService;
+            _externalApiService = externalApiService;
+        }
 
-		public IActionResult Index()
+        public IActionResult Index()
         {
             return View();
         }
@@ -93,19 +97,20 @@ namespace Allup.MVC.Controllers
             var languageId = await GetLanguageAsync();
             var count = await _basketService.AddToBasketAsync(productId);
             string clientId = "";
-            if(!User.Identity.IsAuthenticated)
+            if(!User.Identity!.IsAuthenticated)
                 clientId = _cookieService.GetBrowserId();
             else 
-                clientId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            var items = await _basketItemService.GetAllAsync(x=>x.ClientId==clientId,include:x=>x.Include(y=>y.Product!).ThenInclude(z=>z.ProductTranslations.Where(x => x.LanguageId==languageId)));
+                clientId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+            var items = await _basketItemService.GetAllAsync(x=>x.ClientId==clientId,include:x=>x.Include(y=>y.Product!).ThenInclude(z=>z.ProductTranslations!.Where(x => x.LanguageId==languageId)));
 			var basketProducts = new List<BasketProductViewModel>();
             foreach (var item in items)
             {
                 var basketProduct = new BasketProductViewModel
                 {
+                    BasketItemId=item.Id,
                     Count = item.Count,
                     ProductId = productId,
-                    Name = item.Product.Name,
+                    Name = item.Product!.Name,
                     Price = item.Product.Price,
                     CoverImageUrl = item.Product.CoverImageUrl,
                     FormattedPrice = item.Product.FormattedPrice,
@@ -113,11 +118,18 @@ namespace Allup.MVC.Controllers
                 basketProducts.Add(basketProduct);
             }
             var basketViewModel = new BasketViewModel() { Items = basketProducts };
+            var currency = await _cookieService.GetCurrencyAsync();
 
-			return Json(basketViewModel);
+            var coefficient = await _externalApiService.GetCurrencyCoefficient(currency.CurrencyCode ?? "azn");
+            var culture = new CultureInfo(currency.IsoCode ?? "az-az");
+
+            var totalAmount = (basketViewModel.TotalAmount / coefficient).ToString("C", culture);
+            //ViewData["TotalAmount"] = totalAmount;
+            basketViewModel.FormattedTotalAmount = totalAmount;
+            return Json(basketViewModel);
         }
 
-        public async Task<IActionResult> Remove(int productId)
+        public async Task<IActionResult> Remove(int basketItemId)
         {
 			#region oldCode
 			//var basket = Request.Cookies["basket"];
@@ -163,20 +175,21 @@ namespace Allup.MVC.Controllers
 			////basketViewModel.TotalAmount = totalAmount; 
 			#endregion
 			var languageId = await GetLanguageAsync();
-			var count = await _basketService.RemoveFromBasketAsync(productId);
+			var count = await _basketService.RemoveFromBasketAsync(basketItemId);
 			string clientId = "";
-			if (!User.Identity.IsAuthenticated)
+			if (!User.Identity!.IsAuthenticated)
 				clientId = _cookieService.GetBrowserId();
 			else
-				clientId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-			var items = await _basketItemService.GetAllAsync(x => x.ClientId == clientId, include: x => x.Include(y => y.Product!).ThenInclude(z => z.ProductTranslations.Where(x => x.LanguageId == languageId)));
+				clientId = User.FindFirstValue(ClaimTypes.NameIdentifier)!;
+			var items = await _basketItemService.GetAllAsync(x => x.ClientId == clientId, include: x => x.Include(y => y.Product!).ThenInclude(z => z.ProductTranslations!.Where(x => x.LanguageId == languageId)));
 			var basketProducts = new List<BasketProductViewModel>();
 			foreach (var item in items)
 			{
 				var basketProduct = new BasketProductViewModel
 				{
+                    BasketItemId=item.Id,
 					Count = item.Count,
-					ProductId = productId,
+					ProductId = item.Product!.Id,
 					Name = item.Product.Name,
 					Price = item.Product.Price,
 					CoverImageUrl = item.Product.CoverImageUrl,
@@ -185,8 +198,15 @@ namespace Allup.MVC.Controllers
 				basketProducts.Add(basketProduct);
 			}
 			var basketViewModel = new BasketViewModel() { Items = basketProducts };
+            var currency = await _cookieService.GetCurrencyAsync();
 
-			return Json(basketViewModel);
+            var coefficient = await _externalApiService.GetCurrencyCoefficient(currency.CurrencyCode ?? "azn");
+            var culture = new CultureInfo(currency.IsoCode ?? "az-az");
+
+            var totalAmount = (basketViewModel.TotalAmount / coefficient).ToString("C", culture);
+            //ViewData["TotalAmount"] = totalAmount;
+            basketViewModel.FormattedTotalAmount = totalAmount;
+            return Json(basketViewModel);
         }
     }
 }

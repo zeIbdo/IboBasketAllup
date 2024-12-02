@@ -73,9 +73,9 @@ function addToBasket(productId) {
                     </div>
                     <div class="cart-item-content media-body">
                         <h5 class="product-name"><a href="single-product.html">${item.name}</a></h5>
-                        <span class="product-price">€${item.price}</span>
+                        <span class="product-price">${item.formattedPrice}</span>
                         <span class="product-color"><strong>Color:</strong> White</span>
-                        <a onclick="removeFromBasket(${item.productId})" class="product-close"><i class="fal fa-times"></i></a>
+                        <a onclick="removeFromBasket(${item.basketItemId})" class="product-close"><i class="fal fa-times"></i></a>
                     </div>
                 </div>
             </li>`;
@@ -83,15 +83,15 @@ function addToBasket(productId) {
                 basketItems.append(li);
             }
 
-            basketTotalAmount.text(data.totalAmount);
-            basketTotalAmountInView.text(data.totalAmount);
+            basketTotalAmount.text(data.formattedTotalAmount);
+            basketTotalAmountInView.text(data.formattedTotalAmount);
             basketItemCount.text(data.count);
             console.log(data)
         }
     });
 }
 
-function removeFromBasket(productId) {
+function removeFromBasket(basketItemId) {
 
     let basketItems = $("#basketItems");
     let basketTotalAmount = $("#basketTotalAmount")
@@ -100,7 +100,7 @@ function removeFromBasket(productId) {
     basketItems.empty();
     $.ajax({
         type: 'GET',
-        url: `/basket/remove?productId=${productId}`,
+        url: `/basket/remove?basketItemId=${basketItemId}`,
         success: function (data) {
             for (let item of data.items) {
                 let li = `<li>
@@ -111,9 +111,9 @@ function removeFromBasket(productId) {
                     </div>
                     <div class="cart-item-content media-body">
                         <h5 class="product-name"><a href="single-product.html">${item.name}</a></h5>
-                        <span class="product-price">€${item.price}</span>
+                        <span class="product-price">${item.formattedPrice}</span>
                         <span class="product-color"><strong>Color:</strong> White</span>
-                        <a onclick="removeFromBasket(${item.productId})" class="product-close"><i class="fal fa-times"></i></a>
+                        <a onclick="removeFromBasket(${item.basketItemId})" class="product-close"><i class="fal fa-times"></i></a>
                     </div>
                 </div>
             </li>`;
@@ -121,8 +121,8 @@ function removeFromBasket(productId) {
                 basketItems.append(li);
             }
 
-            basketTotalAmount.text(data.totalAmount);
-            basketTotalAmountInView.text(data.totalAmount);
+            basketTotalAmount.text(data.formattedTotalAmount);
+            basketTotalAmountInView.text(data.formattedTotalAmount);
             basketItemCount.text(data.count);
         }
     });

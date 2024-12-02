@@ -14,7 +14,7 @@
                         <h5 class="product-name"><a href="single-product.html">@item.Name</a></h5>
                         <span class="product-price">@item.FormattedPrice</span>
                         <span class="product-color"><strong>Color:</strong> White</span>
-                        <a onclick="removeFromBasket(@item.ProductId)" class="product-close"><i class="fal fa-times"></i></a>
+                        <a onclick="removeFromBasket(@item.BasketItemId)" class="product-close"><i class="fal fa-times"></i></a>
                     </div>
                 </div>
             </li>
@@ -39,7 +39,7 @@
             </div> *@
             <div class="cart-total price_inline">
                 <span class="label">Total</span>
-                <span class="value" id="basketTotalAmount">€@Model.TotalAmount</span>
+                <span class="value" id="basketTotalAmount">@Model.FormattedTotalAmount</span>
             </div>
         </div> <!-- price content -->
         <div class="checkout text-center">
@@ -51,7 +51,6 @@
 
 
 <script>
-
-    document.getElementById("basketItemCount").innerHTML=@Model.Count
-    document.getElementById("basketTotalAmountInView").innerHTML=@Model.TotalAmount
+    document.getElementById("basketItemCount").innerHTML = @Model.Count;
+    document.getElementById("basketTotalAmountInView").innerHTML = "@Model.FormattedTotalAmount";
 </script>

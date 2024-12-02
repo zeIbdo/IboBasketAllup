@@ -1,11 +1,13 @@
 ﻿using Allup.Application.Services.Abstracts;
 using Allup.Application.UI.Services.Abstracts;
+using Allup.Application.UI.Services.Implementations;
 using Allup.Application.UI.ViewModels;
 using Microsoft.AspNetCore.Localization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.ViewComponents;
 using Microsoft.EntityFrameworkCore;
 using Newtonsoft.Json;
+using System.Globalization;
 using System.Security.Claims;
 using System.Text.Json.Serialization;
 
@@ -18,18 +20,21 @@ namespace Allup.MVC.ViewComponenets
 		private readonly ICookieService _cookieService;
 		private readonly IHttpContextAccessor _httpContextAccessor;
 		private readonly IBasketItemService _basketItemService;
+		private readonly ExternalApiService _externalApiService;
 
-		public BasketViewComponent(IProductService productService, ILanguageService languageService, ICookieService cookieService, IHttpContextAccessor httpContextAccessor, IBasketItemService basketItemService)
+		public BasketViewComponent(IProductService productService, ILanguageService languageService, ICookieService cookieService, IHttpContextAccessor httpContextAccessor, IBasketItemService basketItemService, ExternalApiService externalApiService)
 		{
 			_productService = productService;
 			_languageService = languageService;
 			_cookieService = cookieService;
 			_httpContextAccessor = httpContextAccessor;
 			_basketItemService = basketItemService;
+			_externalApiService = externalApiService;
 		}
 
 		public async Task<IViewComponentResult> InvokeAsync()
         {
+			#region oldCode
 			//var basket = Request.Cookies["basket"];
 			//var basketViewModel = new BasketViewModel();
 			//var basketItemViewModels = new List<BasketItemViewModel>();
@@ -68,21 +73,23 @@ namespace Allup.MVC.ViewComponenets
 
 			//basketViewModel.Items = basketItemViewModels;
 			////basketViewModel.TotalAmount = totalAmount;
-			//TempData["Count"] = basketViewModel.Count;
+			//TempData["Count"] = basketViewModel.Count; 
+			#endregion
 			string clientId = "";
-			if (!User.Identity.IsAuthenticated)
+			if (!User.Identity!.IsAuthenticated)
 				clientId = _cookieService.GetBrowserId();
 			else
-				clientId = _httpContextAccessor.HttpContext.User.FindFirstValue(ClaimTypes.NameIdentifier);
+				clientId = _httpContextAccessor.HttpContext!.User.FindFirstValue(ClaimTypes.NameIdentifier)!;
 			var items = await _basketItemService.GetAllAsync(x => x.ClientId == clientId, include: x => x.Include(y => y.Product!));
 			var basketProducts = new List<BasketProductViewModel>();
 			foreach (var item in items)
 			{
 				var basketProduct = new BasketProductViewModel
 				{
+					BasketItemId = item.Id,
 					Count = item.Count,
 					ProductId = item.ProductId,
-					Name = item.Product.Name,
+					Name = item.Product!.Name,
 					Price = item.Product.Price,
 					CoverImageUrl = item.Product.CoverImageUrl,
 					FormattedPrice = item.Product.FormattedPrice,
@@ -90,6 +97,14 @@ namespace Allup.MVC.ViewComponenets
 				basketProducts.Add(basketProduct);
 			}
 			var basketViewModel = new BasketViewModel() { Items = basketProducts };
+			var currency = await _cookieService.GetCurrencyAsync();
+
+			var coefficient = await _externalApiService.GetCurrencyCoefficient(currency.CurrencyCode ?? "azn");
+			var culture = new CultureInfo(currency.IsoCode ?? "az-az");
+
+			var totalAmount = (basketViewModel.TotalAmount / coefficient).ToString("C", culture);
+			//ViewData["TotalAmount"] = totalAmount;
+			basketViewModel.FormattedTotalAmount = totalAmount;
 			return View(basketViewModel);
         }
     }
